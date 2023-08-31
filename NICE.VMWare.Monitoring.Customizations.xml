@@ -1,0 +1,1620 @@
+﻿<?xml version="1.0" encoding="utf-8"?><ManagementPack ContentReadable="true" SchemaVersion="2.0" OriginalSchemaVersion="1.1" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+  <Manifest>
+    <Identity>
+      <ID>NICE.VMWare.Monitoring.Customizations</ID>
+      <Version>1.0.0.7</Version>
+    </Identity>
+    <Name>NICE VMWare Monitoring Customizations</Name>
+    <References>
+      <Reference Alias="Health">
+        <ID>System.Health.Library</ID>
+        <Version>7.0.8433.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="MSIGL">
+        <ID>Microsoft.SystemCenter.InstanceGroup.Library</ID>
+        <Version>7.5.8501.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="SC">
+        <ID>Microsoft.SystemCenter.Library</ID>
+        <Version>7.0.8433.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="System">
+        <ID>System.Library</ID>
+        <Version>7.5.8501.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+      <Reference Alias="VMware">
+        <ID>NiCE.VMware.vSphere</ID>
+        <Version>5.5.533.0</Version>
+        <PublicKeyToken>058cf9bbd5db72a4</PublicKeyToken>
+      </Reference>
+      <Reference Alias="Windows">
+        <ID>Microsoft.Windows.Library</ID>
+        <Version>7.5.8501.0</Version>
+        <PublicKeyToken>31bf3856ad364e35</PublicKeyToken>
+      </Reference>
+	  </References>
+  </Manifest>
+  <TypeDefinitions>
+    <EntityTypes>
+      <ClassTypes>
+        <ClassType ID="NiCE.VMware.VM.datastores.Disable.Alerting.Group" Accessibility="Public" Abstract="false" Base="MSIGL!Microsoft.SystemCenter.InstanceGroup" Hosted="false" Singleton="true" Extension="false" />
+        <ClassType ID="NiCE.NonWindows.VirtualMachine.Overall.Guest.Servers.Disk.Usage.Group" Accessibility="Public" Abstract="false" Base="MSIGL!Microsoft.SystemCenter.InstanceGroup" Hosted="false" Singleton="true" Extension="false" />
+        <ClassType ID="NiCE.VirtualMachines.Disable.Alerts.Group" Accessibility="Public" Abstract="false" Base="MSIGL!Microsoft.SystemCenter.InstanceGroup" Hosted="false" Singleton="true" Extension="false" />
+        <ClassType ID="NiCE.VMware.VMtools.Seed" Accessibility="Public" Abstract="false" Base="Windows!Microsoft.Windows.LocalApplication" Hosted="true" Singleton="false" Extension="false" >
+		  <Property ID="DisplayName" Type="string" Key="false" CaseSensitive="false" MinLength="4" MaxLength="15" />
+		</ClassType>
+      </ClassTypes>
+    </EntityTypes>
+    <MonitorTypes>
+     <UnitMonitorType ID="NiCE.WMware.Service.Monitor.MonitorType" Accessibility="Public">
+        <MonitorTypeStates>
+          <MonitorTypeState ID="Running" NoDetection="false" />
+          <MonitorTypeState ID="NotRunning" NoDetection="false" />
+        </MonitorTypeStates>
+        <Configuration>
+          <xsd:element name="ComputerName" type="xsd:string" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
+          <xsd:element name="ServiceName" type="xsd:string" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
+          <xsd:element name="IntervalSeconds" type="xsd:integer" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
+          <xsd:element name="CheckStartupType" minOccurs="0" maxOccurs="1" type="xsd:string" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
+          <xsd:element name="Samples" type="xsd:integer" xmlns:xsd="http://www.w3.org/2001/XMLSchema" />
+        </Configuration>		
+        <OverrideableParameters>
+          <OverrideableParameter ID="IntervalSeconds" Selector="$Config/IntervalSeconds$" ParameterType="int" />
+          <OverrideableParameter ID="CheckStartupType" Selector="$Config/CheckStartupType$" ParameterType="string" />
+          <OverrideableParameter ID="Samples" Selector="$Config/Samples$" ParameterType="int" />
+        </OverrideableParameters>
+        <MonitorImplementation>
+          <MemberModules>
+            <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.Win32ServiceInformationProvider">
+              <ComputerName>$Config/ComputerName$</ComputerName>
+              <ServiceName>$Config/ServiceName$</ServiceName>
+              <Frequency>$Config/IntervalSeconds$</Frequency>
+              <DisableCaching>true</DisableCaching>
+              <CheckStartupType>$Config/CheckStartupType$</CheckStartupType>
+            </DataSource>
+            <ProbeAction ID="Probe" TypeID="Windows!Microsoft.Windows.Win32ServiceInformationProbe">
+              <ComputerName>$Config/ComputerName$</ComputerName>
+              <ServiceName>$Config/ServiceName$</ServiceName>
+            </ProbeAction>
+            <ConditionDetection ID="ServiceRunning" TypeID="System!System.ExpressionFilter">
+              <Expression>
+                <Or>
+                  <Expression>
+                    <SimpleExpression>
+                      <ValueExpression>
+                        <XPathQuery Type="Integer">Property[@Name='StartMode']</XPathQuery>
+                      </ValueExpression>
+                      <Operator>Equal</Operator>
+                      <ValueExpression>
+                        <Value Type="Integer">4</Value> <!-- 0=BootStart 1=SystemStart 2=Automatic 3=Manual 4=Disabled -->
+                      </ValueExpression>
+                    </SimpleExpression>
+                  </Expression>
+                  <Expression>
+                    <SimpleExpression>
+                      <ValueExpression>
+                        <XPathQuery Type="Integer">Property[@Name='State']</XPathQuery>
+                      </ValueExpression>
+                      <Operator>Equal</Operator>
+                      <ValueExpression>
+                        <Value Type="Integer">4</Value> <!-- 0=Unknown 1=Stopped 2=StartPending 3=StopPending 4=Running 5=ContinuePending 6=PausePending 7=Paused 8=ServiceNotFound 9=ServerNotFound -->
+                      </ValueExpression>
+                    </SimpleExpression>
+                  </Expression>
+                </Or>
+              </Expression>
+            </ConditionDetection>
+            <ConditionDetection ID="ServiceNotRunning" TypeID="System!System.ExpressionFilter">
+              <Expression>
+                <And>
+                  <Expression>
+                    <SimpleExpression>
+                      <ValueExpression>
+                        <XPathQuery Type="Integer">Property[@Name='StartMode']</XPathQuery>
+                      </ValueExpression>
+                      <Operator>NotEqual</Operator>
+                      <ValueExpression>
+                        <Value Type="Integer">4</Value> <!-- 0=BootStart 1=SystemStart 2=Automatic 3=Manual 4=Disabled -->
+                      </ValueExpression>
+                    </SimpleExpression>
+                  </Expression>
+                  <Expression>
+                    <SimpleExpression>
+                      <ValueExpression>
+                        <XPathQuery Type="Integer">Property[@Name='State']</XPathQuery>
+                      </ValueExpression>
+                      <Operator>NotEqual</Operator>
+                      <ValueExpression>
+                        <Value Type="Integer">4</Value> <!-- 0=Unknown 1=Stopped 2=StartPending 3=StopPending 4=Running 5=ContinuePending 6=PausePending 7=Paused 8=ServiceNotFound 9=ServerNotFound -->
+                      </ValueExpression>
+                    </SimpleExpression>
+                  </Expression>
+                </And>
+              </Expression>
+              <SuppressionSettings>
+                <MatchCount>$Config/Samples$</MatchCount>
+              </SuppressionSettings>			  
+            </ConditionDetection>
+          </MemberModules>
+          <RegularDetections>
+            <RegularDetection MonitorTypeStateID="Running">
+              <Node ID="ServiceRunning">
+                <Node ID="DS" />
+              </Node>
+            </RegularDetection>
+            <RegularDetection MonitorTypeStateID="NotRunning">
+              <Node ID="ServiceNotRunning">
+                <Node ID="DS" />
+              </Node>
+            </RegularDetection>
+          </RegularDetections>
+          <OnDemandDetections>
+            <OnDemandDetection MonitorTypeStateID="Running">
+              <Node ID="ServiceRunning">
+                <Node ID="Probe" />
+              </Node>
+            </OnDemandDetection>
+            <OnDemandDetection MonitorTypeStateID="NotRunning">
+              <Node ID="ServiceNotRunning">
+                <Node ID="Probe" />
+              </Node>
+            </OnDemandDetection>
+          </OnDemandDetections>
+        </MonitorImplementation>
+      </UnitMonitorType>
+    </MonitorTypes>
+  </TypeDefinitions>
+  <Monitoring>
+    <Discoveries>
+	  <Discovery ID="NiCE.VMware.VM.datastores.Disable.Alerting.Group.Discovery" Enabled="true" Target="NiCE.VMware.VM.datastores.Disable.Alerting.Group" ConfirmDelivery="false" Remotable="true" Priority="Normal">
+        <Category>Discovery</Category>
+        <DiscoveryTypes>
+          <DiscoveryRelationship TypeID="MSIGL!Microsoft.SystemCenter.InstanceGroupContainsEntities" />
+        </DiscoveryTypes>
+        <DataSource ID="GroupPopulationDataSource" TypeID="SC!Microsoft.SystemCenter.GroupPopulator">
+          <RuleId>$MPElement$</RuleId>
+          <GroupInstanceId>$MPElement[Name="NiCE.VMware.VM.datastores.Disable.Alerting.Group"]$</GroupInstanceId>
+          <MembershipRules>
+            <MembershipRule>
+              <MonitoringClass>$MPElement[Name="VMware!NiCE.VMware.ESX.Datastore"]$</MonitoringClass>
+              <RelationshipClass>$MPElement[Name="MSIGL!Microsoft.SystemCenter.InstanceGroupContainsEntities"]$</RelationshipClass>
+              <Expression>
+                <RegExExpression>
+                  <ValueExpression>
+                    <Property>$MPElement[Name="System!System.Entity"]/DisplayName$</Property>
+                  </ValueExpression>
+                  <Operator>MatchesRegularExpression</Operator>
+                  <Pattern>(?i)##ESXHostDataStoreNamingConventions##</Pattern>
+                </RegExExpression>
+              </Expression>
+            </MembershipRule>
+          </MembershipRules>
+        </DataSource>
+      </Discovery>
+      <Discovery ID="NiCE.NonWindows.VirtualMachine.Overall.Guest.Servers.Disk.Usage.Group.Discovery" Enabled="true" Target="NiCE.NonWindows.VirtualMachine.Overall.Guest.Servers.Disk.Usage.Group" ConfirmDelivery="false" Remotable="true" Priority="Normal">
+        <Category>Discovery</Category>
+        <DiscoveryTypes>
+          <DiscoveryRelationship TypeID="MSIGL!Microsoft.SystemCenter.InstanceGroupContainsEntities" />
+        </DiscoveryTypes>
+        <DataSource ID="GroupPopulationDataSource" TypeID="SC!Microsoft.SystemCenter.GroupPopulator">
+          <RuleId>$MPElement$</RuleId>
+          <GroupInstanceId>$MPElement[Name="NiCE.NonWindows.VirtualMachine.Overall.Guest.Servers.Disk.Usage.Group"]$</GroupInstanceId>
+          <MembershipRules>
+            <MembershipRule>
+              <MonitoringClass>$MPElement[Name="VMware!NiCE.VMware.ESX.VirtualMachine"]$</MonitoringClass>
+              <RelationshipClass>$MPElement[Name="MSIGL!Microsoft.SystemCenter.InstanceGroupContainsEntities"]$</RelationshipClass>
+              <Expression>
+                <RegExExpression>
+                  <ValueExpression>
+                    <Property>$MPElement[Name="System!System.Entity"]/DisplayName$</Property>
+                  </ValueExpression>
+                  <Operator>MatchesRegularExpression</Operator>
+                  <Pattern>(?i)##ESXGuestServersDiskUsageNamingConventions##I</Pattern>
+                </RegExExpression>
+              </Expression>
+            </MembershipRule>
+          </MembershipRules>
+        </DataSource>
+      </Discovery>
+      <Discovery ID="NiCE.VirtualMachines.Disable.Alerts.Group.Discovery" Enabled="true" Target="NiCE.VirtualMachines.Disable.Alerts.Group" ConfirmDelivery="false" Remotable="true" Priority="Normal">
+        <Category>Discovery</Category>
+        <DiscoveryTypes>
+          <DiscoveryRelationship TypeID="MSIGL!Microsoft.SystemCenter.InstanceGroupContainsEntities" />
+        </DiscoveryTypes>
+        <DataSource ID="GroupPopulationDataSource" TypeID="SC!Microsoft.SystemCenter.GroupPopulator">
+          <RuleId>$MPElement$</RuleId>
+          <GroupInstanceId>$MPElement[Name="NiCE.VirtualMachines.Disable.Alerts.Group"]$</GroupInstanceId>
+          <MembershipRules>
+            <MembershipRule>
+              <MonitoringClass>$MPElement[Name="VMware!NiCE.VMware.ESX.VirtualMachine"]$</MonitoringClass>
+              <RelationshipClass>$MPElement[Name="MSIGL!Microsoft.SystemCenter.InstanceGroupContainsEntities"]$</RelationshipClass>
+              <Expression>
+                <RegExExpression>
+                  <ValueExpression>
+                    <Property>$MPElement[Name="System!System.Entity"]/DisplayName$</Property>
+                  </ValueExpression>
+                  <Operator>MatchesRegularExpression</Operator>
+                  <Pattern>(?i)template|templ|tmpl|ng|tmp|SW|SolarWinds|ForeScout|Test|2016 Server virtual machine|6.5 vCenter Do Not Touch|IP0[1-3]|NSX|201[69] Server|vCLS|Cisco IMC Supervisor|East-ESG0</Pattern>
+                </RegExExpression>
+              </Expression>
+            </MembershipRule>
+          </MembershipRules>
+        </DataSource>
+      </Discovery>
+      <Discovery ID="NiCE.VMware.VMtools.Seed.Discovery" Enabled="true" Target="Windows!Microsoft.Windows.Server.Computer" ConfirmDelivery="false" Remotable="true" Priority="Normal">
+        <Category>Discovery</Category>
+        <DiscoveryTypes>
+          <DiscoveryClass TypeID="NiCE.VMware.VMtools.Seed">
+            <Property TypeID="System!System.Entity" PropertyID="DisplayName" />
+          </DiscoveryClass>
+        </DiscoveryTypes>
+        <DataSource ID="DSDiscovery.Seed" TypeID="Windows!Microsoft.Windows.FilteredRegistryDiscoveryProvider">
+          <ComputerName>$Target/Property[Type="Windows!Microsoft.Windows.Computer"]/NetworkName$</ComputerName>
+          <RegistryAttributeDefinitions>
+            <RegistryAttributeDefinition>
+              <AttributeName>Search</AttributeName>
+              <Path>SYSTEM\CurrentControlSet\Services\VMTools</Path>
+              <PathType>0</PathType>
+              <AttributeType>0</AttributeType>
+            </RegistryAttributeDefinition>
+          </RegistryAttributeDefinitions>
+          <Frequency>86400</Frequency>
+          <ClassId>$MPElement[Name="NiCE.VMware.VMtools.Seed"]$</ClassId>
+          <InstanceSettings>
+            <Settings>
+              <Setting>
+                <Name>$MPElement[Name="Windows!Microsoft.Windows.Computer"]/PrincipalName$</Name>
+                <Value>$Target/Property[Type="Windows!Microsoft.Windows.Computer"]/PrincipalName$</Value>
+              </Setting>
+              <Setting>
+                <Name>$MPElement[Name="System!System.Entity"]/DisplayName$</Name>
+                <Value>$Target/Property[Type="Windows!Microsoft.Windows.Computer"]/PrincipalName$</Value>
+              </Setting>
+            </Settings>
+          </InstanceSettings>
+          <Expression>
+            <SimpleExpression>
+              <ValueExpression>
+                <XPathQuery Type="String">Values/Search</XPathQuery>
+              </ValueExpression>
+              <Operator>Equal</Operator>
+              <ValueExpression>
+                <Value Type="String">True</Value>
+              </ValueExpression>
+            </SimpleExpression>
+          </Expression>
+        </DataSource>
+      </Discovery>
+	</Discoveries>
+	<Rules>
+	  <Rule ID="NiCE.Vmware.VMtools.Service.NotFound.Recovery.Rule" Enabled="true" Target="NiCE.VMware.VMtools.Seed" ConfirmDelivery="true" Remotable="true" Priority="Normal" DiscardLevel="100">
+        <Category>Alert</Category>
+        <DataSources>
+          <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.EventProvider">
+            <ComputerName>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/NetworkName$</ComputerName>
+            <LogName>Operations Manager</LogName>
+            <Expression>
+              <And>
+                <Expression>
+                  <SimpleExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="UnsignedInteger">EventDisplayNumber</XPathQuery>
+                    </ValueExpression>
+                    <Operator>Equal</Operator>
+                    <ValueExpression>
+                      <Value Type="UnsignedInteger">3751</Value>
+                    </ValueExpression>
+                  </SimpleExpression>
+                </Expression>
+                <Expression>
+                  <SimpleExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="String">PublisherName</XPathQuery>
+                    </ValueExpression>
+                    <Operator>Equal</Operator>
+                    <ValueExpression>
+                      <Value Type="String">Health Service Script</Value>
+                    </ValueExpression>
+                  </SimpleExpression>
+                </Expression>
+				<Expression>
+                  <RegExExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="String">Params/Param[2]</XPathQuery>
+                    </ValueExpression>
+                    <Operator>ContainsSubstring</Operator>
+                    <Pattern>vmtools</Pattern>
+                  </RegExExpression>
+                </Expression>
+              </And>
+            </Expression>
+          </DataSource>
+        </DataSources>
+        <WriteActions>
+          <WriteAction ID="Alert" TypeID="Health!System.Health.GenerateAlert">
+            <Priority>1</Priority>  <!-- 0=Low 1=Medium 2=High -->
+            <Severity>0</Severity>  <!-- 0=Information 1=Warning 2=Critical -->
+            <AlertName />
+            <AlertDescription />
+            <AlertOwner />
+            <AlertMessageId>$MPElement[Name="NiCE.Vmware.VMtools.Service.NotFound.Recovery.Rule.AlertMessage"]$</AlertMessageId>
+            <AlertParameters>
+              <AlertParameter1>$Data/EventDescription$</AlertParameter1>
+            </AlertParameters>
+            <Suppression>
+              <SuppressionValue>$Data[Default='']/EventDisplayNumber$</SuppressionValue>
+              <SuppressionValue>$Data[Default='']/PublisherName$</SuppressionValue>
+              <SuppressionValue>$Data[Default='']/LoggingComputer$</SuppressionValue>
+            </Suppression>
+            <Custom1 />
+            <Custom2 />
+            <Custom3 />
+            <Custom4 />
+            <Custom5 />
+            <Custom6 />
+            <Custom7 />
+            <Custom8 />
+            <Custom9 />
+            <Custom10 />
+          </WriteAction>
+        </WriteActions>
+      </Rule>
+      <Rule ID="NiCE.Vmware.VMtools.Service.FoundRunning.Recovery.Rule" Enabled="true" Target="NiCE.VMware.VMtools.Seed" ConfirmDelivery="true" Remotable="true" Priority="Normal" DiscardLevel="100">
+        <Category>Alert</Category>
+        <DataSources>
+          <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.EventProvider">
+            <ComputerName>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/NetworkName$</ComputerName>
+            <LogName>Operations Manager</LogName>
+            <Expression>
+              <And>
+                <Expression>
+                  <SimpleExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="UnsignedInteger">EventDisplayNumber</XPathQuery>
+                    </ValueExpression>
+                    <Operator>Equal</Operator>
+                    <ValueExpression>
+                      <Value Type="UnsignedInteger">3752</Value>
+                    </ValueExpression>
+                  </SimpleExpression>
+                </Expression>
+                <Expression>
+                  <SimpleExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="String">PublisherName</XPathQuery>
+                    </ValueExpression>
+                    <Operator>Equal</Operator>
+                    <ValueExpression>
+                      <Value Type="String">Health Service Script</Value>
+                    </ValueExpression>
+                  </SimpleExpression>
+                </Expression>
+				<Expression>
+                  <RegExExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="String">Params/Param[2]</XPathQuery>
+                    </ValueExpression>
+                    <Operator>ContainsSubstring</Operator>
+                    <Pattern>vmtools</Pattern>
+                  </RegExExpression>
+                </Expression>
+              </And>
+            </Expression>
+          </DataSource>
+        </DataSources>
+        <WriteActions>
+          <WriteAction ID="Alert" TypeID="Health!System.Health.GenerateAlert">
+            <Priority>1</Priority>  <!-- 0=Low 1=Medium 2=High -->
+            <Severity>0</Severity>  <!-- 0=Information 1=Warning 2=Critical -->
+            <AlertName />
+            <AlertDescription />
+            <AlertOwner />
+            <AlertMessageId>$MPElement[Name="NiCE.Vmware.VMtools.Service.FoundRunning.Recovery.Rule.AlertMessage"]$</AlertMessageId>
+            <AlertParameters>
+              <AlertParameter1>$Data/EventDescription$</AlertParameter1>
+            </AlertParameters>
+            <Suppression>
+              <SuppressionValue>$Data[Default='']/EventDisplayNumber$</SuppressionValue>
+              <SuppressionValue>$Data[Default='']/PublisherName$</SuppressionValue>
+              <SuppressionValue>$Data[Default='']/LoggingComputer$</SuppressionValue>
+            </Suppression>
+            <Custom1 />
+            <Custom2 />
+            <Custom3 />
+            <Custom4 />
+            <Custom5 />
+            <Custom6 />
+            <Custom7 />
+            <Custom8 />
+            <Custom9 />
+            <Custom10 />
+          </WriteAction>
+        </WriteActions>
+      </Rule>
+	  <Rule ID="NiCE.Vmware.VMtools.Service.RecoveryFailed.Recovery.Rule" Enabled="true" Target="NiCE.VMware.VMtools.Seed" ConfirmDelivery="true" Remotable="true" Priority="Normal" DiscardLevel="100">
+        <Category>Alert</Category>
+        <DataSources>
+          <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.EventProvider">
+            <ComputerName>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/NetworkName$</ComputerName>
+            <LogName>Operations Manager</LogName>
+            <Expression>
+              <And>
+                <Expression>
+                  <SimpleExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="UnsignedInteger">EventDisplayNumber</XPathQuery>
+                    </ValueExpression>
+                    <Operator>Equal</Operator>
+                    <ValueExpression>
+                      <Value Type="UnsignedInteger">3753</Value>
+                    </ValueExpression>
+                  </SimpleExpression>
+                </Expression>
+                <Expression>
+                  <SimpleExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="String">PublisherName</XPathQuery>
+                    </ValueExpression>
+                    <Operator>Equal</Operator>
+                    <ValueExpression>
+                      <Value Type="String">Health Service Script</Value>
+                    </ValueExpression>
+                  </SimpleExpression>
+                </Expression>
+				<Expression>
+                  <RegExExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="String">Params/Param[2]</XPathQuery>
+                    </ValueExpression>
+                    <Operator>ContainsSubstring</Operator>
+                    <Pattern>vmtools</Pattern>
+                  </RegExExpression>
+                </Expression>
+              </And>
+            </Expression>
+          </DataSource>
+        </DataSources>
+        <WriteActions>
+          <WriteAction ID="Alert" TypeID="Health!System.Health.GenerateAlert">
+            <Priority>1</Priority>  <!-- 0=Low 1=Medium 2=High -->
+            <Severity>1</Severity>  <!-- 0=Information 1=Warning 2=Critical -->
+            <AlertName />
+            <AlertDescription />
+            <AlertOwner />
+            <AlertMessageId>$MPElement[Name="NiCE.Vmware.VMtools.Service.RecoveryFailed.Recovery.Rule.AlertMessage"]$</AlertMessageId>
+            <AlertParameters>
+              <AlertParameter1>$Data/EventDescription$</AlertParameter1>
+            </AlertParameters>
+            <Suppression>
+              <SuppressionValue>$Data[Default='']/EventDisplayNumber$</SuppressionValue>
+              <SuppressionValue>$Data[Default='']/PublisherName$</SuppressionValue>
+              <SuppressionValue>$Data[Default='']/LoggingComputer$</SuppressionValue>
+            </Suppression>
+            <Custom1 />
+            <Custom2 />
+            <Custom3 />
+            <Custom4 />
+            <Custom5 />
+            <Custom6 />
+            <Custom7 />
+            <Custom8 />
+            <Custom9 />
+            <Custom10 />
+          </WriteAction>
+        </WriteActions>
+      </Rule>
+	  <Rule ID="NiCE.Vmware.VMtools.Service.TooManyRecoveryAttempts.Recovery.Rule" Enabled="true" Target="NiCE.VMware.VMtools.Seed" ConfirmDelivery="true" Remotable="true" Priority="Normal" DiscardLevel="100">
+        <Category>Alert</Category>
+        <DataSources>
+          <DataSource ID="DS" TypeID="Windows!Microsoft.Windows.EventProvider">
+            <ComputerName>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/NetworkName$</ComputerName>
+            <LogName>Operations Manager</LogName>
+            <Expression>
+              <And>
+                <Expression>
+                  <SimpleExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="UnsignedInteger">EventDisplayNumber</XPathQuery>
+                    </ValueExpression>
+                    <Operator>Equal</Operator>
+                    <ValueExpression>
+                      <Value Type="UnsignedInteger">3754</Value>
+                    </ValueExpression>
+                  </SimpleExpression>
+                </Expression>
+                <Expression>
+                  <SimpleExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="String">PublisherName</XPathQuery>
+                    </ValueExpression>
+                    <Operator>Equal</Operator>
+                    <ValueExpression>
+                      <Value Type="String">Health Service Script</Value>
+                    </ValueExpression>
+                  </SimpleExpression>
+                </Expression>
+				<Expression>
+                  <RegExExpression>
+                    <ValueExpression>
+                      <XPathQuery Type="String">Params/Param[2]</XPathQuery>
+                    </ValueExpression>
+                    <Operator>ContainsSubstring</Operator>
+                    <Pattern>vmtools</Pattern>
+                  </RegExExpression>
+                </Expression>
+              </And>
+            </Expression>
+          </DataSource>
+        </DataSources>
+        <WriteActions>
+          <WriteAction ID="Alert" TypeID="Health!System.Health.GenerateAlert">
+            <Priority>1</Priority>  <!-- 0=Low 1=Medium 2=High -->
+            <Severity>0</Severity>  <!-- 0=Information 1=Warning 2=Critical -->
+            <AlertName />
+            <AlertDescription />
+            <AlertOwner />
+            <AlertMessageId>$MPElement[Name="NiCE.Vmware.VMtools.Service.TooManyRecoveryAttempts.Recovery.Rule.AlertMessage"]$</AlertMessageId>
+            <AlertParameters>
+              <AlertParameter1>$Data/EventDescription$</AlertParameter1>
+            </AlertParameters>
+            <Suppression>
+              <SuppressionValue>$Data[Default='']/EventDisplayNumber$</SuppressionValue>
+              <SuppressionValue>$Data[Default='']/PublisherName$</SuppressionValue>
+              <SuppressionValue>$Data[Default='']/LoggingComputer$</SuppressionValue>
+            </Suppression>
+            <Custom1 />
+            <Custom2 />
+            <Custom3 />
+            <Custom4 />
+            <Custom5 />
+            <Custom6 />
+            <Custom7 />
+            <Custom8 />
+            <Custom9 />
+            <Custom10 />
+          </WriteAction>
+        </WriteActions>
+      </Rule>
+    </Rules>
+    <Monitors>
+      <UnitMonitor ID="NiCE.VMware.VMtools.Service.Monitor" Accessibility="Public" Enabled="true" Target="NiCE.VMware.VMtools.Seed" ParentMonitorID="Health!System.Health.ConfigurationState" Remotable="true" Priority="Normal" TypeID="NiCE.WMware.Service.Monitor.MonitorType" ConfirmDelivery="true">
+        <Category>ConfigurationHealth</Category>
+        <AlertSettings AlertMessage="NiCE.VMware.VMtools.Service.Monitor.AlertMessage">
+          <AlertOnState>Warning</AlertOnState> <!-- Warning/Error - This must match a possible OperationalState\HealthState below -->
+          <AutoResolve>true</AutoResolve> <!-- true/false -->
+          <AlertPriority>Normal</AlertPriority> <!-- Low/Normal/High -->
+          <AlertSeverity>Warning</AlertSeverity> <!-- Error/Warning/Information/MatchMonitorHealth -->
+          <AlertParameters>
+            <AlertParameter1>$Data/Context/Property[@Name='Name']$</AlertParameter1>
+            <AlertParameter2>$Target/Host/Property[Type="Windows!Microsoft.Windows.Computer"]/PrincipalName$</AlertParameter2>
+          </AlertParameters>
+        </AlertSettings>		
+        <OperationalStates>
+          <OperationalState ID="Running" MonitorTypeStateID="Running" HealthState="Success" /> <!-- HealthState can be Error/Warning/Success -->
+          <OperationalState ID="NotRunning" MonitorTypeStateID="NotRunning" HealthState="Warning" /> <!-- HealthState can be Error/Warning/Success -->
+        </OperationalStates>
+        <Configuration>
+          <ComputerName />
+          <ServiceName>VMtools</ServiceName> <!-- This is the service name as seen in the registry at HKLM\SYSTEM\CCS\Services -->
+          <IntervalSeconds>300</IntervalSeconds> <!-- How often to check the state of the service.  Every 30 seconds is the default.-->
+          <CheckStartupType>true</CheckStartupType>
+          <Samples>2</Samples> <!-- The number of consecutive times a service is detected as not running before changing state of the monitor. 2 samples is the default -->
+        </Configuration>		
+      </UnitMonitor>
+    </Monitors>
+    <Recoveries>
+      <Recovery ID="NiCE.Vmware.VMtools.Service.Recovery" Accessibility="Public" Enabled="true" Target="NiCE.VMware.VMtools.Seed" Monitor="NiCE.VMware.VMtools.Service.Monitor" ResetMonitor="true" ExecuteOnState="Warning" Remotable="true" Timeout="300">
+        <Category>Custom</Category>
+		<WriteAction ID="PSWA" TypeID="Windows!Microsoft.Windows.PowerShellWriteAction">
+		  <ScriptName>NiCE.Vmware.VMtoolsService.Recovery.v1006.ps1</ScriptName>
+		  <ScriptBody>
+#=================================================================================
+#  Script to restart a service
+#
+#  Author:  Kevin Holman
+#
+#  Version:  1.0
+#
+#=================================================================================
+
+
+# Manual Testing section - put stuff here for manually testing script - typically parameters:
+#=================================================================================
+# $ServiceName = "vmtools"
+#=================================================================================
+
+
+# Constants section - modify stuff here:
+#=================================================================================
+# Assign script name variable for use in event logging
+$ScriptName = "NiCE.Vmware.VMtoolsService.Recovery.v1006.ps1"
+$EventID = "3750"
+#=================================================================================
+
+
+# Starting Script section
+#=================================================================================
+# Gather the start time of the script
+$StartTime = Get-Date
+#Set variable to be used in logging events
+$whoami = whoami
+# Load MOMScript API
+$momapi = New-Object -comObject MOM.ScriptAPI
+#=================================================================================
+
+
+# Begin MAIN script section
+#=================================================================================
+
+[string]$ServiceName = "vmtools"
+
+#Log script event that we are starting task
+$momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Recovery script for service: ($ServiceName) is starting. `n Running as ($whoami).")
+write-host "Recovery script for service: ($ServiceName) is starting. Running as ($whoami)."
+
+#Get the service object
+$Svc = Get-Service $ServiceName
+
+#Check to ensure the service exists:
+IF (!$Svc)
+{
+  $momapi.LogScriptEvent($ScriptName,3751,2, "`n Service ($ServiceName) was not found on this computer. `n This indicates a misconfiguration of the monitor. `n Error is ($error)")
+  write-host "Service ($ServiceName) was not found on this computer. This indicates a misconfiguration of the monitor. Error is ($error)"
+  EXIT
+}
+
+#Get Service Status:
+[string]$SvcStatus = $Svc.Status
+
+#Do not continue is service is already running
+IF ($SvcStatus -eq "Running")
+{
+  $momapi.LogScriptEvent($ScriptName,3752,2, "`n Service ($ServiceName) was found to be in the Running state. `n This indicates a misconfiguration of the monitor. `n No recovery action will be taken.")
+  write-host "Service ($ServiceName) was found to be in the Running state. This indicates a misconfiguration of the monitor. No recovery action will be taken."
+  EXIT  
+}
+
+#Log recovery information event
+$momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Service: ($ServiceName) was found to be in the ($SvcStatus) state.  Recovery will be attempted.")
+write-host "Service: ($ServiceName) was found to be in the ($SvcStatus) state.  Recovery will be attempted."
+
+#Attempt First Recovery
+#Restart-Service -Name $ServiceName -Force
+get-Service -Name $ServiceName | start-service
+#Wait time in seconds
+Start-Sleep 20
+#Get the service object
+$Svc = Get-Service $ServiceName
+#Get Service Status:
+$SvcStatus = $Svc.Status
+
+IF ($SvcStatus -ne "Running")
+{
+  #Attempt Second Recovery
+  $momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Service: ($ServiceName) second attempt at recovering starting now.")
+  write-host "Service: ($ServiceName) second attempt at recovering starting now."  
+  #Restart-Service -Name $ServiceName -Force 
+  get-Service -Name $ServiceName | start-service
+  Start-Sleep 20
+  $Svc = Get-Service $ServiceName
+  $SvcStatus = $Svc.Status 
+}
+
+IF ($SvcStatus -ne "Running")
+{
+  #Attempt Third Recovery
+  $momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Service: ($ServiceName) third attempt at recovering starting now.")
+  write-host "Service: ($ServiceName) third attempt at recovering starting now."    
+  #Restart-Service -Name $ServiceName -Force
+  get-Service -Name $ServiceName | start-service
+  Start-Sleep 20
+  $Svc = Get-Service $ServiceName
+  $SvcStatus = $Svc.Status 
+}
+
+IF ($SvcStatus -eq "Running")
+{
+  #Log event of a successful restart
+  $momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Service: ($ServiceName) was successfully restarted and then detected to be in the Running state.")
+  write-host "Service: ($ServiceName) was successfully restarted and then detected to be in the Running state."
+}
+ELSE
+{
+  #Log event of a successful restart
+  $momapi.LogScriptEvent($ScriptName,3753,2,"`n Service: ($ServiceName) is not running. `n Recovery was attempted and failed. `n Manual interventon is required. `n The last detected service status was ($SvcStatus).") 
+  write-host "Service: ($ServiceName) is not running. Recovery was attempted and failed. Manual interventon is required. The last detected service status was ($SvcStatus)."
+}
+
+# Check to see if this recovery script has been run multiple times in the last x minutes for detection of too many recovery actions
+$Message = "*($ServiceName) is starting*"
+$Events = Get-EventLog -LogName 'Operations Manager' -After $StartTime.AddMinutes(-60) -Message $Message | where {$_.EventID -eq 3750}
+$EventCount = $Events.Count
+IF ($EventCount -ge 3)
+{
+  $momapi.LogScriptEvent($ScriptName,3754,2,"`n Too many service recoveries have been attempted for ($ServiceName). `n ($EventCount) recoveries are detected in the event log. `n Manual interventon is required.")
+  write-host "Too many service recoveries have been attempted for ($ServiceName). ($EventCount) recoveries are detected in the event log. Manual interventon is required."
+}
+
+# End of script section
+#=================================================================================
+#Log an event for script ending and total execution time.
+$EndTime = Get-Date
+$ScriptTime = ($EndTime - $StartTime).TotalSeconds
+$momapi.LogScriptEvent($ScriptName,$EventID,0,"`n Script Completed. `n Script Runtime: ($ScriptTime) seconds.")
+write-host "Script Completed. Script Runtime: ($ScriptTime) seconds."
+#=================================================================================
+# End of script		  
+		  </ScriptBody>
+		  <TimeoutSeconds>240</TimeoutSeconds>
+		</WriteAction>
+      </Recovery>
+	</Recoveries>
+    <Overrides>
+      <MonitorConfigurationOverride ID="Alias83e77bcf5af84e5d8ee4e56571689e1cOverrideForMonitorNiCEVMwareESXHostMemorySharedMBMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemorySharedMB.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasfbee0529a21340b49a586ab425a29bc5OverrideForMonitorNiCEVMwareESXHostMemorySharedMBMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemorySharedMB.Monitor" Parameter="LowThreshold">
+        <Value>24576</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias5064f92525cc4896847e808796cb4d91OverrideForMonitorNiCEVMwareESXHostMemoryUsagePercentMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryUsagePercent.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasbafc23291d9e47479ed05eba6ca2ba0eOverrideForMonitorNiCEVMwareESXHostMemoryUsagePercentMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryUsagePercent.Monitor" Parameter="LowThreshold">
+        <Value>95</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias51cafd137ecd447eb46a535acedd469bOverrideForMonitorNiCEVMwareESXVirtualMachineNetworkUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.NetworkUsageKBps.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias96ab753b1a914e61a8f6fb90c1bff4c1OverrideForMonitorNiCEVMwareESXVirtualMachineNetworkUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.NetworkUsageKBps.Monitor" Parameter="LowThreshold">
+        <Value>307000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias09f9e4420ab6440e8cf4fb2c243403fcOverrideForMonitorNiCEVMwareESXVirtualMachineStorageUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.StorageUsageKBps.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias8a747d4e24ec426e81c4b664a5178678OverrideForMonitorNiCEVMwareESXVirtualMachineStorageUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.StorageUsageKBps.Monitor" Parameter="LowThreshold">
+        <Value>256000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias12d73616cb79405e90341ba6805afdc6OverrideForMonitorNiCEVMwareESXPoolMemorySharedMBMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.MemorySharedMB.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasd8e2e7c14b5d4740932dc64470d83469OverrideForMonitorNiCEVMwareESXPoolMemorySharedMBMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.MemorySharedMB.Monitor" Parameter="LowThreshold">
+        <Value>2500</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias198d4313a83a46faaed4a4a5cad56d16OverrideForMonitorNiCEVMwareESXHostMemoryPressureMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryPressure.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias389356c4180140b2969302bdc39e5743OverrideForMonitorNiCEVMwareESXHostMemoryPressureMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryPressure.Monitor" Parameter="LowThreshold">
+        <Value>90</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias0375bde782bb4695a251c137bd0264f2OverrideForMonitorNiCEVMwareESXHostStorageWriteDataThresholdMonitorForContextNiCEVMwareESXHostStorage" Context="VMware!NiCE.VMware.ESX.HostStorage" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostStorage.WriteData.ThresholdMonitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliase335d57eca3040e4a20845acf6167611OverrideForMonitorNiCEVMwareESXHostStorageWriteDataThresholdMonitorForContextNiCEVMwareESXHostStorage" Context="VMware!NiCE.VMware.ESX.HostStorage" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostStorage.WriteData.ThresholdMonitor" Parameter="LowThreshold">
+        <Value>307000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasb5d14cc30fcb4faea9991b21c964470dOverrideForMonitorNiCEVMwareESXHostStorageWriteDataThresholdMonitorForContextNiCEVMwareESXHostStorage" Context="VMware!NiCE.VMware.ESX.HostStorage" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostStorage.WriteData.ThresholdMonitor" Parameter="HighThreshold">
+        <Value>358400</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliase7c64fa5ad8741ba8bd06d0e8e8b6929OverrideForMonitorNiCEVMwareESXHostMemorySharedMBMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemorySharedMB.Monitor" Parameter="HighThreshold">
+        <Value>30720</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias3a462cf54cb24f879225ab512a5c5f0bOverrideForMonitorNiCEVMwareESXVirtualMachineStorageUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.StorageUsageKBps.Monitor" Parameter="HighThreshold">
+        <Value>307200</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias5671d138dcd84497897730017e6f8d5fOverrideForMonitorNiCEVMwareESXVirtualMachineNetworkUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.NetworkUsageKBps.Monitor" Parameter="HighThreshold">
+        <Value>332800</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias6e74179eab184930acf03a664557a461OverrideForMonitorNiCEVMwareESXClusterMemoryPressureMonitorForContextNiCEVMwareESXCluster" Context="VMware!NiCE.VMware.ESX.Cluster" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Cluster.MemoryPressure.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliase8e6078dd3b846d0b40e1fdf48de4eb4OverrideForMonitorNiCEVMwareESXHostMemoryBalloonMBMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryBalloonMB.Monitor" Parameter="HighThreshold">
+        <Value>20000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias9658aae0f7154e25a3d125e26444c026OverrideForMonitorNiCEVMwareESXHostMemoryBalloonMBMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryBalloonMB.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasff4cd9a9d9e64c5c9f0596444a6fb5ebOverrideForMonitorNiCEVMwareESXHostMemoryBalloonMBMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryBalloonMB.Monitor" Parameter="LowThreshold">
+        <Value>10000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasfbc8521d7e8044729d23c57d16e7a727OverrideForMonitorNiCEVMwareESXClusterMemoryPressureMonitorForContextNiCEVMwareESXCluster" Context="VMware!NiCE.VMware.ESX.Cluster" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Cluster.MemoryPressure.Monitor" Parameter="HighThreshold">
+        <Value>95</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasee493a636f8a4d7d9fc59a51a1b250efOverrideForMonitorNiCEVMwareESXClusterMemoryPressureMonitorForContextNiCEVMwareESXCluster" Context="VMware!NiCE.VMware.ESX.Cluster" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Cluster.MemoryPressure.Monitor" Parameter="LowThreshold">
+        <Value>90</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias03977d3b677348b19fb5cdfa1d59a10aOverrideForMonitorNiCEVMwareESXPoolMemoryBalloonMBMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.MemoryBalloonMB.Monitor" Parameter="HighThreshold">
+        <Value>20000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias8ebfd44cbb4a413eb80e7f1bb8fc3ee1OverrideForMonitorNiCEVMwareESXPoolMemoryBalloonMBMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.MemoryBalloonMB.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias52485ab1a4d844d7855c14a524fa7213OverrideForMonitorNiCEVMwareESXPoolMemoryBalloonMBMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.MemoryBalloonMB.Monitor" Parameter="LowThreshold">
+        <Value>10000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasd1a1003089f6459391e2d8980aba91f5OverrideForMonitorNiCEVMwareESXHostStorageReadDataThresholdMonitorForContextNiCEVMwareESXHostStorage" Context="VMware!NiCE.VMware.ESX.HostStorage" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostStorage.ReadData.ThresholdMonitor" Parameter="HighThreshold">
+        <Value>250000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias5496ec316a8a469da7665181ccef8a6cOverrideForMonitorNiCEVMwareESXHostStorageReadDataThresholdMonitorForContextNiCEVMwareESXHostStorage" Context="VMware!NiCE.VMware.ESX.HostStorage" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostStorage.ReadData.ThresholdMonitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasa529d6f4d490448f88f03849229ac3ceOverrideForMonitorNiCEVMwareESXHostStorageReadDataThresholdMonitorForContextNiCEVMwareESXHostStorage" Context="VMware!NiCE.VMware.ESX.HostStorage" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostStorage.ReadData.ThresholdMonitor" Parameter="LowThreshold">
+        <Value>200000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias4d6a1c15064344beb74315056a37b5bbOverrideForMonitorNiCEVMwareESXHostMemoryUsagePercentMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryUsagePercent.Monitor" Parameter="HighThreshold">
+        <Value>98</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias328aa0ce4e9742b79df0dcb6fbc52f14OverrideForMonitorNiCEVMwareESXVirtualMachineMemorySwappedMBMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.MemorySwappedMB.Monitor" Parameter="HighThreshold">
+        <Value>4000</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias13ff6c87c4c8487cb088e1c6c8b7ccceOverrideForMonitorNiCEVMwareESXVirtualMachineMemorySwappedMBMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.MemorySwappedMB.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias8e054c16463c4ced88550ac5005df70dOverrideForMonitorNiCEVMwareESXVirtualMachineMemoryBalloonMBMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.MemoryBalloonMB.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasd71460bc48aa448e94f312d0095bb240OverrideForMonitorNiCEVMwareESXPoolMemoryOverheadMBMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.MemoryOverheadMB.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasfba4dfc62cd9400b9126d34ac05653fcOverrideForMonitorNiCEVMwareESXDatastoreUsedSpaceThresholdMonitorForContextNiCEVMwareESXDatastore" Context="VMware!NiCE.VMware.ESX.Datastore" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Datastore.UsedSpace.ThresholdMonitor" Parameter="NumSamples">
+        <Value>12</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasf4c1b293649a4f45965267281218f801OverrideForMonitorNiCEVMwareESXDatastoreUsedSpaceThresholdMonitorForContextNiCEVMwareESXDatastore" Context="VMware!NiCE.VMware.ESX.Datastore" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Datastore.UsedSpace.ThresholdMonitor" Parameter="LowThreshold">
+        <Value>95</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias393a417bfc6b4d7880cc1a38620b87c5OverrideForMonitorNiCEVMwareESXHostCPUUsagePercentMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.CPUUsagePercent.Monitor" Parameter="HighThreshold">
+        <Value>95</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasb319059b5a764cc99526f28cdc53e592OverrideForMonitorNiCEVMwareESXHostCPUUsagePercentMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.CPUUsagePercent.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasdcfb12b236d64eea935b8aa8feb25e8dOverrideForMonitorNiCEVMwareESXHostCPUUsagePercentMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.CPUUsagePercent.Monitor" Parameter="LowThreshold">
+        <Value>90</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasbc871b269fec473095147e4921cc7950OverrideForMonitorNiCEVMwareESXHostStorageCommandsAbortedThresholdMonitorForContextNiCEVMwareESXHostStorage" Context="VMware!NiCE.VMware.ESX.HostStorage" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostStorage.CommandsAborted.ThresholdMonitor" Parameter="HighThreshold">
+        <Value>150</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias9aa29dce0ad54f9d9c9e4adf4f46d80cOverrideForMonitorNiCEVMwareESXHostStorageCommandsAbortedThresholdMonitorForContextNiCEVMwareESXHostStorage" Context="VMware!NiCE.VMware.ESX.HostStorage" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostStorage.CommandsAborted.ThresholdMonitor" Parameter="LowThreshold">
+        <Value>75</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias0aee48734f264b39925e9a4668299c63OverrideForMonitorNiCEVMwareESXVirtualMachineCPUsReadyPercentMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.CPUsReadyPercent.Monitor" Parameter="HighThreshold">
+        <Value>15</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias95ce191622d747798540af0e13a00e57OverrideForMonitorNiCEVMwareESXVirtualMachineCPUsReadyPercentMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.CPUsReadyPercent.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias288a074f170348cf8ba7412d9316b710OverrideForMonitorNiCEVMwareESXVirtualMachineCPUsReadyPercentMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.CPUsReadyPercent.Monitor" Parameter="LowThreshold">
+        <Value>10</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliase03b22432f7d451292061dd188fb5d5dOverrideForMonitorNiCEVMwareESXHostCPUsReadyPercentMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.CPUsReadyPercent.Monitor" Parameter="HighThreshold">
+        <Value>15</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasba98f3ba4ded4ff4acaf179e3b3dc946OverrideForMonitorNiCEVMwareESXHostCPUsReadyPercentMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.CPUsReadyPercent.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias3bf37f5075e74f11818bf9d6d5066a6dOverrideForMonitorNiCEVMwareESXHostCPUsReadyPercentMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.CPUsReadyPercent.Monitor" Parameter="LowThreshold">
+        <Value>10</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias2f0ad89d8c314b5d85d7f55ee72923a9OverrideForMonitorNiCEVMwareESXHostStorageCommandsAbortedThresholdMonitorForContextNiCEVMwareESXHostStorage" Context="VMware!NiCE.VMware.ESX.HostStorage" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostStorage.CommandsAborted.ThresholdMonitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias5dd7de6f21e948a6ba730ba1e343a22cOverrideForMonitorNiCEVMwareESXClusterCPUsReadyPercentMonitorForContextNiCEVMwareESXCluster" Context="VMware!NiCE.VMware.ESX.Cluster" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Cluster.CPUsReadyPercent.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliase05b9097e827416ba8a87a0ada9c3d63OverrideForMonitorNiCEVMwareESXVirtualMachineCPUUsagePercentHighMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.CPUUsagePercent.High.Monitor" Parameter="HighThreshold">
+        <Value>100</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias2168c22198644352a0696e63e9276b62OverrideForMonitorNiCEVMwareESXVirtualMachineCPUUsagePercentHighMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.CPUUsagePercent.High.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias74ec161e087f4f84a69af5eb00de3334OverrideForMonitorNiCEVMwareESXVirtualMachineCPUUsagePercentHighMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.CPUUsagePercent.High.Monitor" Parameter="LowThreshold">
+        <Value>98</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasf335020c769c4beb86ad0e435f2f7a4fOverrideForMonitorNiCEVMwareESXVirtualMachineLastSnapshotMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.LastSnapshot.Monitor" Parameter="Frequency">
+        <Value>86402</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias5123739489a14f229d940b17c6a50608OverrideForMonitorNiCEVMwareESXVirtualMachineToolsNotRunningMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.ToolsNotRunning.Monitor" Parameter="Frequency">
+        <Value>43200</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias12e8c125c8794e1ba487e73e8aa15c48OverrideForMonitorNiCEVMwareESXFirewallWMIInstrumentationInMonitorForContextMicrosoftWindowsComputer" Context="Windows!Microsoft.Windows.Computer" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Firewall.WMIInstrumentation.In.Monitor" Parameter="Frequency">
+        <Value>3600</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias6d5fc659b7f34c38a011cca3376c30a3OverrideForMonitorNiCEVMwareESXPoolCPUUsagePercentMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.CPUUsagePercent.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias2f0255b0ad2a4a4e81733aeec615b43eOverrideForMonitorNiCEVMwareESXDatastoreUsedSpaceThresholdMonitorForContextNiCEVMwareESXDatastore" Context="VMware!NiCE.VMware.ESX.Datastore" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Datastore.UsedSpace.ThresholdMonitor" Parameter="HighThreshold">
+        <Value>97</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliasd65b7ff635f841f1a24932cc44c83875OverrideForMonitorNiCEVMwareESXPoolCPUUsagePercentMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.CPUUsagePercent.Monitor" Parameter="HighThreshold">
+        <Value>101</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Alias79cc9b07486045da8b6e002410dafb4bOverrideForMonitorNiCEVMwareESXPoolCPUUsagePercentMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.CPUUsagePercent.Monitor" Parameter="LowThreshold">
+        <Value>99</Value>
+      </MonitorConfigurationOverride>
+      <MonitorConfigurationOverride ID="Aliascb385ab593e1499390c23057e571236aOverrideForMonitorNiCEVMwareESXNetworkDVSwitchStatusConfigMonitorForContextNiCEVMwareESXNetworkDVSwitch" Context="VMware!NiCE.VMware.ESX.NetworkDVSwitch" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.NetworkDVSwitch.StatusConfig.Monitor" Parameter="NumSamples">
+        <Value>4</Value>
+      </MonitorConfigurationOverride>
+
+      <MonitorPropertyOverride ID="Override.AlertSeverity.NiCE.VMware.ESX.VirtualMachine.CPUUsagePercent.Low.Monitor" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.CPUUsagePercent.Low.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasd027287e3dab4de393ec55654cdb9bedOverrideForMonitorNiCEVMwareESXVirtualMachineConnectionStateMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.ConnectionState.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasdecb710841e4405b9c2c50c75910ed95OverrideForMonitorNiCEVMwareESXPoolMemorySharedMBMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.MemorySharedMB.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias2a58e5cde26e4d74a38b23bb11378a63OverrideForMonitorNiCEVMwareESXVirtualMachineLastSnapshotMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.LastSnapshot.Monitor" Property="AlertSeverity">
+        <Value>Information</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias9abd460775c24dc28ee255a63f922985OverrideForMonitorNiCEVMwareESXHostMemoryPressureMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryPressure.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasde2f8f8fca774af19c6db538a8b162efOverrideForMonitorNiCEVMwareESXVirtualMachineGuestDiskUsedPercentMonitorForContextNiCEVMwareESXVirtualMachineGuestDisk" Context="VMware!NiCE.VMware.ESX.VirtualMachineGuestDisk" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachineGuestDisk.UsedPercent.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias3fa26f6dc72f4696bb1bdd0340d700f5OverrideForMonitorNiCEVMwareESXVirtualMachineToolsNotInstalledMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.ToolsNotInstalled.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias66673c7a44b44f6eb13a0f46beca18e1OverrideForMonitorNiCEVMwareESXHostFanGroupMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.FanGroup.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasb882d6a2d4b14ba399df61ab0121b6c4OverrideForMonitorNiCEVMwareESXHostStatusConfigMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.StatusConfig.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasb53b88e3d8604629988efd5dee41236cOverrideForMonitorNiCEVMwareESXHostOverallStatusStateMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.OverallStatus.StateMonitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias49f6870d5c5e4051bdbc79e083bd43afOverrideForMonitorNiCEVMwareESXVirtualMachineOverallStatusStateMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.OverallStatus.StateMonitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias7b69e8be43274de582d44c5e2a4a2fb8OverrideForMonitorNiCEVMwareESXClusterOverallStatusStateMonitorForContextNiCEVMwareESXCluster" Context="VMware!NiCE.VMware.ESX.Cluster" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Cluster.OverallStatus.StateMonitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias1fb5ba85c65549b8ab252a05f8a479d3OverrideForMonitorNiCEVMwareESXDatacenterOverallStatusStateMonitorForContextNiCEVMwareESXDatacenter" Context="VMware!NiCE.VMware.ESX.Datacenter" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Datacenter.OverallStatus.StateMonitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias0b8de8b21e9e4769a169db67ca533dcaOverrideForMonitorNiCEVMwareESXClusterStatusConfigMonitorForContextNiCEVMwareESXCluster" Context="VMware!NiCE.VMware.ESX.Cluster" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Cluster.StatusConfig.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasa0a0c4e417c54b07af7fb94c5a5e0981OverrideForMonitorNiCEVMwareESXHostPowerGroupMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.PowerGroup.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias6a55e1d32c064395a4acd988acf6a8a3OverrideForMonitorNiCEVMwareESXHostMemoryGroupMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.MemoryGroup.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias3775cf9952db4a9a955e83079554130eOverrideForMonitorNiCEVMwareESXHostNotRespondingMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.NotResponding.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias193774340d4047eca97add3baf2ddfc4OverrideForMonitorNiCEVMwareESXNetworkDVSwitchOverallStatusStateMonitorForContextNiCEVMwareESXNetworkDVSwitch" Context="VMware!NiCE.VMware.ESX.NetworkDVSwitch" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.NetworkDVSwitch.OverallStatus.StateMonitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasce09c30d8ea4407cbf7cb9422880dfbdOverrideForMonitorNiCEVMwareESXVirtualMachineCPUUsagePercentHighMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.CPUUsagePercent.High.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias8f3588fea000409abe690d766c0fb693OverrideForMonitorNiCEVMwareESXVirtualMachineMemoryUsagePercentMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.MemoryUsagePercent.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasc333324a06c246cab210daeb40c23147OverrideForMonitorNiCEVMwareESXHostIsDisconnectedMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.IsDisconnected.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias5e8561fc893a43cdb87cbcbfa7386987OverrideForMonitorNiCEVMwareESXDatastoreAccessibleStateMonitorForContextNiCEVMwareESXDatastore" Context="VMware!NiCE.VMware.ESX.Datastore" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Datastore.Accessible.StateMonitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias6545e17bacf94be9bcec8b849a7a1e34OverrideForMonitorNiCEVMwareESXHostNetworkAdapterLinkPresentForContextNiCEVMwareESXHostNetworkAdapter" Context="VMware!NiCE.VMware.ESX.HostNetworkAdapter" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.HostNetworkAdapter.LinkPresent" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias11b6d76a39b34d68a873945786f35a7cOverrideForMonitorNiCEVMwareESXVMwareServerConnectedMonitorForContextNiCEVMwareESXVMwareServer" Context="VMware!NiCE.VMware.ESX.VMwareServer" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VMwareServer.Connected.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliase908c9cfaeca4d4380523d971d089e50OverrideForMonitorNiCEVMwareESXVirtualMachineGuestDiskAnyDiskUsageMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachineGuestDisk.AnyDiskUsage.Monitor" Property="AlertSeverity">
+        <Value>Information</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias2545f50501284a10a3fb94abc94f1fa5OverrideForMonitorNiCEVMwareESXNetworkDVSwitchStatusConfigMonitorForContextNiCEVMwareESXNetworkDVSwitch" Context="VMware!NiCE.VMware.ESX.NetworkDVSwitch" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.NetworkDVSwitch.StatusConfig.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliase3b47c45b92144ff983cf13f4af1ec9bOverrideForMonitorNiCEVMwareESXPoolCPUUsagePercentMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.CPUUsagePercent.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias34b465f03a384ab4a283dbc6cbb9c9c5OverrideForMonitorNiCEVMwareESXNetworkDVSwitchStatusConfigMonitorForContextNiCEVMwareESXNetworkDVSwitch" Context="VMware!NiCE.VMware.ESX.NetworkDVSwitch" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.NetworkDVSwitch.StatusConfig.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias54c0538cace347dda17c9b9edeec1ed4OverrideForMonitorNiCEVMwareESXPoolMemoryOverheadMBMonitorForContextNiCEVMwareESXPool" Context="VMware!NiCE.VMware.ESX.Pool" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Pool.MemoryOverheadMB.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias07811b3eb77c4f51a1a56b4610323f72OverrideForMonitorNiCEVMwareESXHostIsMaintenanceModeMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.IsMaintenanceMode.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias4e7553d2d46747339a0cbb631f4ec569OverrideForMonitorNiCEVMwareESXVirtualMachineToolsNotRunningMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.ToolsNotRunning.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias040d839f71a649848b6d161ae8990d70OverrideForMonitorNiCEVMwareESXClusterFailoverLevelMonitorForContextNiCEVMwareESXCluster" Context="VMware!NiCE.VMware.ESX.Cluster" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Cluster.FailoverLevel.Monitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasb825f301b7f741bc8672d53d6f859cb9OverrideForMonitorNiCEVMwareESXDatastoreUsedSpaceThresholdMonitorForContextNiCEVMwareESXDatastore" Context="VMware!NiCE.VMware.ESX.Datastore" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Datastore.UsedSpace.ThresholdMonitor" Property="AlertSeverity">
+        <Value>Warning</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasef21c104fd734746a95534d0303bb3ceOverrideForMonitorNiCEVMwareESXVirtualMachineGuestDiskAnyDiskUsageMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachineGuestDisk.AnyDiskUsage.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Aliasee454481ad97460788a88a5a4c568100OverrideForMonitorNiCEVMwareESXVirtualMachineLastSnapshotMonitorForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.LastSnapshot.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias5341249a6fca4a9fb8472e775488e3ecOverrideForMonitorNiCEVMwareESXHostIsMaintenanceModeMonitorForContextNiCEVMwareESXHost" Context="VMware!NiCE.VMware.ESX.Host" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Host.IsMaintenanceMode.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+
+      <MonitorPropertyOverride ID="Override.Group.Enable.NiCE.VMware.ESX.VirtualMachineGuestDisk.AnyDiskUsage.Monitor" Context="NiCE.NonWindows.VirtualMachine.Overall.Guest.Servers.Disk.Usage.Group" ContextInstance="c4ab2a99-631e-a488-4a14-63a33698fbbd" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachineGuestDisk.AnyDiskUsage.Monitor" Property="Enabled">
+        <Value>true</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Override.Group.Enable.NiCE.VMware.ESX.Datastore.UsedSpace.ThresholdMonitor" Context="NiCE.VMware.VM.datastores.Disable.Alerting.Group" ContextInstance="c0b086db-86cf-14c6-2c4a-d26f41f19952" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.Datastore.UsedSpace.ThresholdMonitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Override.Group.Enable.NiCE.VMware.ESX.VirtualMachine.ToolsNotRunning.Monitor" Context="NiCE.VirtualMachines.Disable.Alerts.Group" ContextInstance="143ecf69-1c1e-3601-0149-236b4f70520f" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.ToolsNotRunning.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+      <MonitorPropertyOverride ID="Alias73649a88175148e3af8f8aa12145f0d8OverrideForMonitorNiCEVMwareESXVirtualMachineToolsNotRunningMonitorForContextUINameSpacece5df3a25df24a0ab874fefa053e3989Group" Context="UINameSpacece5df3a25df24a0ab874fefa053e3989.Group" ContextInstance="143ecf69-1c1e-3601-0149-236b4f70520f" Enforced="false" Monitor="VMware!NiCE.VMware.ESX.VirtualMachine.ToolsNotRunning.Monitor" Property="Enabled">
+        <Value>false</Value>
+      </MonitorPropertyOverride>
+
+      <RuleConfigurationOverride ID="Alias956b4b579d2344268721392f89c1a05fOverrideForRuleNiCEVMwareESXVirtualMachineStorageProvisionedSpaceForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Rule="VMware!NiCE.VMware.ESX.VirtualMachineStorage.ProvisionedSpace" Parameter="IntervalSeconds" Module="DS">
+        <Value>3600</Value>
+      </RuleConfigurationOverride>
+
+      <RulePropertyOverride ID="Alias32a346ae96a044f19bb59d322258de26OverrideForRuleNiCEVMwareESXVirtualMachineStorageUsedSpaceForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Rule="VMware!NiCE.VMware.ESX.VirtualMachineStorage.UsedSpace" Property="Enabled">
+        <Value>false</Value>
+      </RulePropertyOverride>
+      <RulePropertyOverride ID="Alias5fc675271af44545bb0ec466c7ab5a28OverrideForRuleNiCEVMwareESXVirtualMachineCPUsReadyPercentForContextNiCEVMwareESXVirtualMachine" Context="VMware!NiCE.VMware.ESX.VirtualMachine" Enforced="false" Rule="VMware!NiCE.VMware.ESX.VirtualMachine.CPUsReadyPercent" Property="Enabled">
+        <Value>false</Value>
+      </RulePropertyOverride>
+    </Overrides>
+  </Monitoring>
+  <Presentation>
+    <StringResources>
+	  <StringResource ID="NiCE.Vmware.VMtools.Service.NotFound.Recovery.Rule.AlertMessage" />
+      <StringResource ID="NiCE.Vmware.VMtools.Service.FoundRunning.Recovery.Rule.AlertMessage" />
+	  <StringResource ID="NiCE.Vmware.VMtools.Service.RecoveryFailed.Recovery.Rule.AlertMessage" />
+	  <StringResource ID="NiCE.Vmware.VMtools.Service.TooManyRecoveryAttempts.Recovery.Rule.AlertMessage" />
+	  <StringResource ID="NiCE.VMware.VMtools.Service.Monitor.AlertMessage" />
+    </StringResources>
+  </Presentation>
+  <LanguagePacks>
+    <LanguagePack ID="ENU" IsDefault="false">
+      <DisplayStrings>
+        <DisplayString ElementID="NiCE.VMWare.Monitoring.Customizations">
+          <Name>NICE VMWare Monitoring Customizations</Name>
+          <Description>
+v1.0.0.7 18 Jul 2023 - Updated Recovery rules to informational, only Recovery failed is WARN
+v1.0.0.4 11 Nov 2022 - Tuning alerts to outage Critical/Warning
+v1.0.0.0  7 June 2021 - Created NiCE VMWare customizations pack</Description>
+        </DisplayString>
+
+		<DisplayString ElementID="NiCE.VMware.VM.datastores.Disable.Alerting.Group">
+          <Name>NiCE VMware VM datastores to disable alerting</Name>
+          <Description>Datastores 3625711 - VMware SME requested disabling alerting</Description>
+        </DisplayString>
+		<DisplayString ElementID="NiCE.NonWindows.VirtualMachine.Overall.Guest.Servers.Disk.Usage.Group">
+          <Name>NiCE NonWindows Virtual Machine Overall Guest Servers for Disk Usage Monitoring</Name>
+          <Description>Created 23 June 2022 - KWJ - Group to disable Guest Disk usage alerts</Description>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.VirtualMachines.Disable.Alerts.Group">
+          <Name>NiCE Virtual Machines to disable alerts</Name>
+          <Description>28 June 2022 - KWJ - Disable VMware VM's from alerting</Description>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.VMware.VMtools.Seed">
+          <Name>NiCE Vmware VMTools Seed Class</Name>
+          <Description>NiCE Vmware VMTools Seed Class</Description>
+        </DisplayString>
+
+        <DisplayString ElementID="NiCE.VirtualMachines.Disable.Alerts.Group.Discovery">
+          <Name>Populate NiCE Virtual Machines to disable alerts</Name>
+          <Description>This discovery rule populates the group 'NiCE Virtual Machines to disable alerts'</Description>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.VMware.VM.datastores.Disable.Alerting.Group.Discovery">
+          <Name>Populate NiCE VMware Netbackup datastores to disable alerting</Name>
+          <Description>This discovery rule populates the group 'NiCE VMware Netbackup datastores to disable alerting'</Description>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.NonWindows.VirtualMachine.Overall.Guest.Servers.Disk.Usage.Group.Discovery">
+          <Name>Populate NiCE NonWindows Virtual Machine Overall Guest Servers for Disk Usage Monitoring</Name>
+          <Description>This discovery rule populates the group 'NiCE NonWindows Virtual Machine Overall Guest Servers for Disk Usage Monitoring'</Description>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.VMware.VMtools.Seed.Discovery">
+		  <Name>NiCE Vmware VMTools Seed Discovery</Name>
+          <Description>NiCE Vmware VMTools Class Discovery</Description>
+        </DisplayString>
+		
+        <DisplayString ElementID="NiCE.WMware.Service.Monitor.MonitorType">
+          <Name>NiCE Vmware VMTools Seed Class Monitor MonitorType</Name>
+          <Description>This monitor type refers to datasource to run service monitor script logic</Description>
+        </DisplayString>
+
+        <DisplayString ElementID="NiCE.Vmware.VMtools.Service.NotFound.Recovery.Rule">
+          <Name>NiCE VMware VMTools Service Recovery Failed - Service Not Found Rule</Name>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.Vmware.VMtools.Service.NotFound.Recovery.Rule.AlertMessage">
+          <Name>NiCE VMware VMTools Service Recovery Failed - Service Not Found</Name>
+          <Description>Event Description: {0}</Description>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.Vmware.VMtools.Service.FoundRunning.Recovery.Rule">
+          <Name>NiCE VMware VMTools Service Recovery Failed - Service Already Running Rule</Name>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.Vmware.VMtools.Service.FoundRunning.Recovery.Rule.AlertMessage">
+          <Name>NiCE VMware VMTools Service Recovery Failed - Service Already Running</Name>
+          <Description>Event Description: {0}</Description>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.Vmware.VMtools.Service.RecoveryFailed.Recovery.Rule">
+          <Name>NiCE VMware VMTools Service Recovery Failed - Service is not running Rule</Name>
+        </DisplayString>	
+        <DisplayString ElementID="NiCE.Vmware.VMtools.Service.RecoveryFailed.Recovery.Rule.AlertMessage">
+          <Name>NiCE VMware VMTools Service Recovery Failed - Service is not running</Name>
+          <Description>Event Description: {0}</Description>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.Vmware.VMtools.Service.TooManyRecoveryAttempts.Recovery.Rule">
+          <Name>NiCE VMware VMTools Service Recovery has attempted to recover the service too many times Rule</Name>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.Vmware.VMtools.Service.TooManyRecoveryAttempts.Recovery.Rule.AlertMessage">
+          <Name>NiCE VMware VMTools Service Recovery has attempted to recover the service too many times</Name>
+          <Description>Event Description: {0}</Description>
+        </DisplayString>
+
+        <DisplayString ElementID="NiCE.VMware.VMtools.Service.Monitor">
+          <Name>NiCE VMware VMTools Service Monitor</Name>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.VMware.VMtools.Service.Monitor" SubElementID="Running">
+          <Name>Running</Name>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.VMware.VMtools.Service.Monitor" SubElementID="NotRunning">
+          <Name>Not Running</Name>
+        </DisplayString>
+        <DisplayString ElementID="NiCE.VMware.VMtools.Service.Monitor.AlertMessage">
+          <Name>NiCE VMware VMTools Service Is Not Running</Name>
+          <Description>{0}</Description>
+        </DisplayString>
+
+        <DisplayString ElementID="NiCE.Vmware.VMtools.Service.Recovery">
+          <Name>NiCE VMware VMTools Service Recovery</Name>
+        </DisplayString>
+
+        <DisplayString ElementID="Override.AlertSeverity.NiCE.VMware.ESX.VirtualMachine.CPUUsagePercent.Low.Monitor">
+          <Name>NotUsed</Name>
+          <Description>7 June 2021 - KWJ - Changing monitor from Critical to Warning</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias83e77bcf5af84e5d8ee4e56571689e1cOverrideForMonitorNiCEVMwareESXHostMemorySharedMBMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 - KWJ - Tuning to gather for an hour before alerting</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasfbee0529a21340b49a586ab425a29bc5OverrideForMonitorNiCEVMwareESXHostMemorySharedMBMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 - KWJ - Tuning to 90% of 256GB per VMware team, set to 24576 on 27 Oct 2021</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias5064f92525cc4896847e808796cb4d91OverrideForMonitorNiCEVMwareESXHostMemoryUsagePercentMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 - KWJ - Changing to 90% for one hour</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasbafc23291d9e47479ed05eba6ca2ba0eOverrideForMonitorNiCEVMwareESXHostMemoryUsagePercentMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>15 Dec 2021 - KWJ - Increased to 95
+8 Nov 2021 - KWJ - Increased to 90</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias51cafd137ecd447eb46a535acedd469bOverrideForMonitorNiCEVMwareESXVirtualMachineNetworkUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 -  KWJ - Setting samples to make alert after 1 hour, and value above 40MB</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias09f9e4420ab6440e8cf4fb2c243403fcOverrideForMonitorNiCEVMwareESXVirtualMachineStorageUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 - KWJ - Changing to 10MB and 4 samples to alert hourly</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias8a747d4e24ec426e81c4b664a5178678OverrideForMonitorNiCEVMwareESXVirtualMachineStorageUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Increased to 300mb critical, 250mb warning</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias12d73616cb79405e90341ba6805afdc6OverrideForMonitorNiCEVMwareESXPoolMemorySharedMBMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 - KWJ - Changing to 10MB and 4 samples to alert hourly</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasd8e2e7c14b5d4740932dc64470d83469OverrideForMonitorNiCEVMwareESXPoolMemorySharedMBMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 - KWJ - Changing to 10MB and 4 samples to alert hourly</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias96ab753b1a914e61a8f6fb90c1bff4c1OverrideForMonitorNiCEVMwareESXVirtualMachineNetworkUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>13 Dec 2021 - KWJ - Updated to 325MB crit &amp; 307MB warning
+10 Dec 2021 - KWJ - Updated to crit @ 300MB, warn @ 250MB
+4 Aug 2021 -  KWJ - Setting samples to make alert after 1 hour, and value above 145MB</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias198d4313a83a46faaed4a4a5cad56d16OverrideForMonitorNiCEVMwareESXHostMemoryPressureMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 - KWJ - Setting to 4 samples for alert after 1 hour, 90%</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias389356c4180140b2969302bdc39e5743OverrideForMonitorNiCEVMwareESXHostMemoryPressureMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 - KWJ - Setting to 4 samples for alert after 1 hour, 90%</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasd027287e3dab4de393ec55654cdb9bedOverrideForMonitorNiCEVMwareESXVirtualMachineConnectionStateMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>4 Aug 2021 - KWJ - Changing to warning</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasdecb710841e4405b9c2c50c75910ed95OverrideForMonitorNiCEVMwareESXPoolMemorySharedMBMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>5 Aug 2021 - KWJ - Disabling Resource Pool low monitor</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias2a58e5cde26e4d74a38b23bb11378a63OverrideForMonitorNiCEVMwareESXVirtualMachineLastSnapshotMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>5 Aug 2021 - KWJ - Setting to informational</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias9abd460775c24dc28ee255a63f922985OverrideForMonitorNiCEVMwareESXHostMemoryPressureMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>5 Aug 2021 - KWJ - Disable duplicate alert</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias0375bde782bb4695a251c137bd0264f2OverrideForMonitorNiCEVMwareESXHostStorageWriteDataThresholdMonitorForContextNiCEVMwareESXHostStorage">
+          <Name>NotUsed</Name>
+          <Description>27 Oct 2021 - KWJ - Increased samples to 4 (1 hour),  and warning threshold (to 21MB)</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliase335d57eca3040e4a20845acf6167611OverrideForMonitorNiCEVMwareESXHostStorageWriteDataThresholdMonitorForContextNiCEVMwareESXHostStorage">
+          <Name>NotUsed</Name>
+          <Description>14 Dec 2021 - KWJ - Increased Critical to 350, Warn to 300
+30 Nov 2021 - KWJ - Increased Critical to 225MB, Warning to 200MB
+22 Nov 2021 - KWJ - Increased Critical to 125MB
+8 Nov 2021 - KWJ - from 100MB from 70(MB), warning threshold (to 100MB)
+27 Oct 2021 - KWJ - Increased samples to 4 (1 hour), Critical to 50MB, Warning threshold (to 30MB)</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasde2f8f8fca774af19c6db538a8b162efOverrideForMonitorNiCEVMwareESXVirtualMachineGuestDiskUsedPercentMonitorForContextNiCEVMwareESXVirtualMachineGuestDisk">
+          <Name>NotUsed</Name>
+          <Description>27 Oct 2021 - KWJ - Disabling monitor</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasb5d14cc30fcb4faea9991b21c964470dOverrideForMonitorNiCEVMwareESXHostStorageWriteDataThresholdMonitorForContextNiCEVMwareESXHostStorage">
+          <Name>NotUsed</Name>
+          <Description>14 Dec 2021 - KWJ - Increased Critical to 350, Warn to 300
+30 Nov 2021 - KWJ - Increased Critical to 225MB, Warning to 200MB
+22 Nov 2021 - KWJ - Increased Critical to 125MB
+8 Nov 2021 - KWJ - from 100MB from 70(MB), warning threshold (to 100MB)
+27 Oct 2021 - KWJ - Increased samples to 4 (1 hour), Critical to 50MB, Warning threshold (to 30MB)</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliase7c64fa5ad8741ba8bd06d0e8e8b6929OverrideForMonitorNiCEVMwareESXHostMemorySharedMBMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>27 Oct 2021 - KWJ - Increased samples to 4 (1 hour),  and warning threshold (to 30MB)</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias3a462cf54cb24f879225ab512a5c5f0bOverrideForMonitorNiCEVMwareESXVirtualMachineStorageUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Increased to 300mb critical, 250mb warning;   5 Nov 2021 - KWJ - Updated critical alert to 30MB</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias5671d138dcd84497897730017e6f8d5fOverrideForMonitorNiCEVMwareESXVirtualMachineNetworkUsageKBpsMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>13 Dec 2021 - KWJ - Updated to 325MB crit &amp; 307MB warning
+10 Dec 2021 - KWJ - Updated to crit @ 300MB, warn @ 250MB
+4 Aug 2021 -  KWJ - Setting samples to make alert after 1 hour, and value above 145MB</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias6e74179eab184930acf03a664557a461OverrideForMonitorNiCEVMwareESXClusterMemoryPressureMonitorForContextNiCEVMwareESXCluster">
+          <Name>NotUsed</Name>
+          <Description>5 Nov 2021 - KWJ - Changing frequency to hourly (4 samples)</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliase8e6078dd3b846d0b40e1fdf48de4eb4OverrideForMonitorNiCEVMwareESXHostMemoryBalloonMBMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>5 Nov 2021 - KWJ - Updated Host Memory Balloon Monitor for hourly (4 samples), 10k warning, 20k critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias9658aae0f7154e25a3d125e26444c026OverrideForMonitorNiCEVMwareESXHostMemoryBalloonMBMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>5 Nov 2021 - KWJ - Updated Host Memory Balloon Monitor for hourly (4 samples), 10k warning, 20k critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasff4cd9a9d9e64c5c9f0596444a6fb5ebOverrideForMonitorNiCEVMwareESXHostMemoryBalloonMBMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>5 Nov 2021 - KWJ - Updated Host Memory Balloon Monitor for hourly (4 samples), 10k warning, 20k critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasfbc8521d7e8044729d23c57d16e7a727OverrideForMonitorNiCEVMwareESXClusterMemoryPressureMonitorForContextNiCEVMwareESXCluster">
+          <Name>NotUsed</Name>
+          <Description>5 Nov 2021 - KWJ - Updated Cluster memory pressure warn to 90, critical 95</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasee493a636f8a4d7d9fc59a51a1b250efOverrideForMonitorNiCEVMwareESXClusterMemoryPressureMonitorForContextNiCEVMwareESXCluster">
+          <Name>NotUsed</Name>
+          <Description>5 Nov 2021 - KWJ - Updated Cluster memory pressure warn to 90, critical 95</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias03977d3b677348b19fb5cdfa1d59a10aOverrideForMonitorNiCEVMwareESXPoolMemoryBalloonMBMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>Updated 8 Nov 2021 - Updated Resource Pool Memory Balloon Monitor for hourly (4 samples), 10k warning, 20k critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias8ebfd44cbb4a413eb80e7f1bb8fc3ee1OverrideForMonitorNiCEVMwareESXPoolMemoryBalloonMBMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>Updated 8 Nov 2021 - Updated Resource Pool Memory Balloon Monitor for hourly (4 samples), 10k warning, 20k critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias52485ab1a4d844d7855c14a524fa7213OverrideForMonitorNiCEVMwareESXPoolMemoryBalloonMBMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>Updated 8 Nov 2021 - Updated Resource Pool Memory Balloon Monitor for hourly (4 samples), 10k warning, 20k critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasd1a1003089f6459391e2d8980aba91f5OverrideForMonitorNiCEVMwareESXHostStorageReadDataThresholdMonitorForContextNiCEVMwareESXHostStorage">
+          <Name>NotUsed</Name>
+          <Description>Updated 10 Nov 2021 - KWJ - Updated Read to 75MB Critical, 50MB warning.      8 Nov 2021 - Updated Host Storage Read Data Rate Monitor for hourly (4 samples), 25k warning, 50k critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias5496ec316a8a469da7665181ccef8a6cOverrideForMonitorNiCEVMwareESXHostStorageReadDataThresholdMonitorForContextNiCEVMwareESXHostStorage">
+          <Name>NotUsed</Name>
+          <Description>Updated 8 Nov 2021 - Updated Host Storage Read Data Rate Monitor for hourly (4 samples), 25k warning, 50k critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasa529d6f4d490448f88f03849229ac3ceOverrideForMonitorNiCEVMwareESXHostStorageReadDataThresholdMonitorForContextNiCEVMwareESXHostStorage">
+          <Name>NotUsed</Name>
+          <Description>Updated 8 Nov 2021 - Updated Host Storage Read Data Rate Monitor for hourly (4 samples), 25k warning, 50k critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias4d6a1c15064344beb74315056a37b5bbOverrideForMonitorNiCEVMwareESXHostMemoryUsagePercentMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>15 Dec 2021 - KWJ - Increased to 98
+8 Nov 2021 - KWJ - Increased Critical to 95</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias3fa26f6dc72f4696bb1bdd0340d700f5OverrideForMonitorNiCEVMwareESXVirtualMachineToolsNotInstalledMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>8 Nov 2021 - KWJ - Chaning alert from critical to warning</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias66673c7a44b44f6eb13a0f46beca18e1OverrideForMonitorNiCEVMwareESXHostFanGroupMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Disabling Fan Sensor Group monitor</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasb882d6a2d4b14ba399df61ab0121b6c4OverrideForMonitorNiCEVMwareESXHostStatusConfigMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Disabling Host Configuration Status Monitor rollup</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasb53b88e3d8604629988efd5dee41236cOverrideForMonitorNiCEVMwareESXHostOverallStatusStateMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Disabling Host Overall Status Monitor rollup</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias13ff6c87c4c8487cb088e1c6c8b7ccceOverrideForMonitorNiCEVMwareESXVirtualMachineMemorySwappedMBMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Changing samples to 4 (1 hour).</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias8e054c16463c4ced88550ac5005df70dOverrideForMonitorNiCEVMwareESXVirtualMachineMemoryBalloonMBMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Setting Samples from 2 &gt; 4 (1 hour).</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias49f6870d5c5e4051bdbc79e083bd43afOverrideForMonitorNiCEVMwareESXVirtualMachineOverallStatusStateMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Disabling Overall Status State Monitors</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias7b69e8be43274de582d44c5e2a4a2fb8OverrideForMonitorNiCEVMwareESXClusterOverallStatusStateMonitorForContextNiCEVMwareESXCluster">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Disabling Overall Status State Monitors</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias1fb5ba85c65549b8ab252a05f8a479d3OverrideForMonitorNiCEVMwareESXDatacenterOverallStatusStateMonitorForContextNiCEVMwareESXDatacenter">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Disabling Overall Status State Monitors</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasd71460bc48aa448e94f312d0095bb240OverrideForMonitorNiCEVMwareESXPoolMemoryOverheadMBMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Changed Resource Pool Memory Overhead Monitor to hourly</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias0b8de8b21e9e4769a169db67ca533dcaOverrideForMonitorNiCEVMwareESXClusterStatusConfigMonitorForContextNiCEVMwareESXCluster">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - Disable Cluster Configuration Status Monitor</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasfba4dfc62cd9400b9126d34ac05653fcOverrideForMonitorNiCEVMwareESXDatastoreUsedSpaceThresholdMonitorForContextNiCEVMwareESXDatastore">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - changed Samples to 12 (1 hour), Warning to 85%</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasf4c1b293649a4f45965267281218f801OverrideForMonitorNiCEVMwareESXDatastoreUsedSpaceThresholdMonitorForContextNiCEVMwareESXDatastore">
+          <Name>NotUsed</Name>
+          <Description>10 Nov 2021 - KWJ - changed Samples to 12 (1 hour), Warning to 85%</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasa0a0c4e417c54b07af7fb94c5a5e0981OverrideForMonitorNiCEVMwareESXHostPowerGroupMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>17 Nov 2021 - KWJ - Removing duplicate roll-up monitor</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias6a55e1d32c064395a4acd988acf6a8a3OverrideForMonitorNiCEVMwareESXHostMemoryGroupMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>17 Nov 2021 - KWJ - Removing duplicate roll-up monitor</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias3775cf9952db4a9a955e83079554130eOverrideForMonitorNiCEVMwareESXHostNotRespondingMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>17 Nov 2021 - KWJ - Removing duplicate roll-up monitor</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias393a417bfc6b4d7880cc1a38620b87c5OverrideForMonitorNiCEVMwareESXHostCPUUsagePercentMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>17 Nov 2021 - KWJ - Changing samples to 4 (1 hour), and CPU warning to 90, critical 95</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasb319059b5a764cc99526f28cdc53e592OverrideForMonitorNiCEVMwareESXHostCPUUsagePercentMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>17 Nov 2021 - KWJ - Changing samples to 4 (1 hour), and CPU warning to 90, critical 95</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasdcfb12b236d64eea935b8aa8feb25e8dOverrideForMonitorNiCEVMwareESXHostCPUUsagePercentMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>17 Nov 2021 - KWJ - Changing samples to 4 (1 hour), and CPU warning to 90, critical 95</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasbc871b269fec473095147e4921cc7950OverrideForMonitorNiCEVMwareESXHostStorageCommandsAbortedThresholdMonitorForContextNiCEVMwareESXHostStorage">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Updating Host Aborted commands to 75 Warning, 150 critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias9aa29dce0ad54f9d9c9e4adf4f46d80cOverrideForMonitorNiCEVMwareESXHostStorageCommandsAbortedThresholdMonitorForContextNiCEVMwareESXHostStorage">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Updating Host Aborted commands to 75 Warning, 150 critical</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias0aee48734f264b39925e9a4668299c63OverrideForMonitorNiCEVMwareESXVirtualMachineCPUsReadyPercentMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Increased samples to 4
+22 Nov 2021 - KWJ - Increased warning to 10, critical to 15</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias95ce191622d747798540af0e13a00e57OverrideForMonitorNiCEVMwareESXVirtualMachineCPUsReadyPercentMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Increased samples to 4</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias288a074f170348cf8ba7412d9316b710OverrideForMonitorNiCEVMwareESXVirtualMachineCPUsReadyPercentMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Increased samples to 4
+22 Nov 2021 - KWJ - Increased warning to 10, critical to 15</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliase03b22432f7d451292061dd188fb5d5dOverrideForMonitorNiCEVMwareESXHostCPUsReadyPercentMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Increased samples to 4
+22 Nov 2021 - KWJ - Increased warning to 10, critical to 15</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasba98f3ba4ded4ff4acaf179e3b3dc946OverrideForMonitorNiCEVMwareESXHostCPUsReadyPercentMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Increased samples to 4
+22 Nov 2021 - KWJ - Increased warning to 10, critical to 15</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias3bf37f5075e74f11818bf9d6d5066a6dOverrideForMonitorNiCEVMwareESXHostCPUsReadyPercentMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>22 Nov 2021 - KWJ - Increased samples to 4
+22 Nov 2021 - KWJ - Increased warning to 10, critical to 15</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias2f0ad89d8c314b5d85d7f55ee72923a9OverrideForMonitorNiCEVMwareESXHostStorageCommandsAbortedThresholdMonitorForContextNiCEVMwareESXHostStorage">
+          <Name>NotUsed</Name>
+          <Description>30 Nov 2021 - KWJ - Changing samples to 4 (for 1 hour duration)</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias193774340d4047eca97add3baf2ddfc4OverrideForMonitorNiCEVMwareESXNetworkDVSwitchOverallStatusStateMonitorForContextNiCEVMwareESXNetworkDVSwitch">
+          <Name>NotUsed</Name>
+          <Description>1 Dec 2021 - KWJ - Disabled Network overall status monitor</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias956b4b579d2344268721392f89c1a05fOverrideForRuleNiCEVMwareESXVirtualMachineStorageProvisionedSpaceForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>6 Dec 2021 - KWJ - Changing interval to 1 hour</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias32a346ae96a044f19bb59d322258de26OverrideForRuleNiCEVMwareESXVirtualMachineStorageUsedSpaceForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>6 Dec 2021 - KWJ - Disabling</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias5fc675271af44545bb0ec466c7ab5a28OverrideForRuleNiCEVMwareESXVirtualMachineCPUsReadyPercentForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>8 Dec 2021 - KWJ - Disabled due to perf collection</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias5dd7de6f21e948a6ba730ba1e343a22cOverrideForMonitorNiCEVMwareESXClusterCPUsReadyPercentMonitorForContextNiCEVMwareESXCluster">
+          <Name>NotUsed</Name>
+          <Description>9 Dec 2021 - KWJ - Changing samples to 4 (hourly vs. 30 mins)</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliase05b9097e827416ba8a87a0ada9c3d63OverrideForMonitorNiCEVMwareESXVirtualMachineCPUUsagePercentHighMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>9 Dec 2021 - KWJ - Changing from 95 to 100</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias2168c22198644352a0696e63e9276b62OverrideForMonitorNiCEVMwareESXVirtualMachineCPUUsagePercentHighMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>9 Dec 2021 - KWJ - Changing to hourly</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias74ec161e087f4f84a69af5eb00de3334OverrideForMonitorNiCEVMwareESXVirtualMachineCPUUsagePercentHighMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>9 Dec 2021 - KWJ - Changing to 98</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasce09c30d8ea4407cbf7cb9422880dfbdOverrideForMonitorNiCEVMwareESXVirtualMachineCPUUsagePercentHighMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>10 Dec 2021 - KWJ - Disabling alert as redundant for windows alerts</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias8f3588fea000409abe690d766c0fb693OverrideForMonitorNiCEVMwareESXVirtualMachineMemoryUsagePercentMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>10 Dec 2021 - KWJ - Disabling Memory usage duplicate to Windows Server</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasf335020c769c4beb86ad0e435f2f7a4fOverrideForMonitorNiCEVMwareESXVirtualMachineLastSnapshotMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>14 Dec 2021 - KWJ - Changing to daily reminder</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias5123739489a14f229d940b17c6a50608OverrideForMonitorNiCEVMwareESXVirtualMachineToolsNotRunningMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>14 Dec 2021 - KWJ - Check every 12 hours</Description>
+        </DisplayString>
+
+        <DisplayString ElementID="Alias12e8c125c8794e1ba487e73e8aa15c48OverrideForMonitorNiCEVMwareESXFirewallWMIInstrumentationInMonitorForContextMicrosoftWindowsComputer">
+          <Name>NotUsed</Name>
+          <Description>Changing parameter to hourly</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias11b6d76a39b34d68a873945786f35a7cOverrideForMonitorNiCEVMwareESXVMwareServerConnectedMonitorForContextNiCEVMwareESXVMwareServer">
+          <Name>NotUsed</Name>
+          <Description>22 June 2022 - KWJ - Changing alert to warning</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias2f0255b0ad2a4a4e81733aeec615b43eOverrideForMonitorNiCEVMwareESXDatastoreUsedSpaceThresholdMonitorForContextNiCEVMwareESXDatastore">
+          <Name>NotUsed</Name>
+          <Description>23 June 2022 - KWJ - Changing Critical to 95%, Warning 90%</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasd65b7ff635f841f1a24932cc44c83875OverrideForMonitorNiCEVMwareESXPoolCPUUsagePercentMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>22 June 2022 - KWJ - Changing Critical from 90 to 95%</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliase908c9cfaeca4d4380523d971d089e50OverrideForMonitorNiCEVMwareESXVirtualMachineGuestDiskAnyDiskUsageMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>22 June 2022 - KWJ - VMware VM guest disk usage</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias2545f50501284a10a3fb94abc94f1fa5OverrideForMonitorNiCEVMwareESXNetworkDVSwitchStatusConfigMonitorForContextNiCEVMwareESXNetworkDVSwitch">
+          <Name>NotUsed</Name>
+          <Description>22 June 2022 - KWJ - Switching to Informational</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliase3b47c45b92144ff983cf13f4af1ec9bOverrideForMonitorNiCEVMwareESXPoolCPUUsagePercentMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>22 June 2022 - KWJ - Changing to Warning</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias34b465f03a384ab4a283dbc6cbb9c9c5OverrideForMonitorNiCEVMwareESXNetworkDVSwitchStatusConfigMonitorForContextNiCEVMwareESXNetworkDVSwitch">
+          <Name>NotUsed</Name>
+          <Description>29 June 2022 - KWJ - Disabling per Chris Bates, as normal vMotion config differences.</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias07811b3eb77c4f51a1a56b4610323f72OverrideForMonitorNiCEVMwareESXHostIsMaintenanceModeMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>22 June 2022 - KWJ - Changing to Warning</Description>
+        </DisplayString>
+	    <DisplayString ElementID="Alias4e7553d2d46747339a0cbb631f4ec569OverrideForMonitorNiCEVMwareESXVirtualMachineToolsNotRunningMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>23 June 2022 - KWJ - Changing to Warning</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias040d839f71a649848b6d161ae8990d70OverrideForMonitorNiCEVMwareESXClusterFailoverLevelMonitorForContextNiCEVMwareESXCluster">
+          <Name>NotUsed</Name>
+          <Description>23 June 2022 - KWJ - Tuning to Warning</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasef21c104fd734746a95534d0303bb3ceOverrideForMonitorNiCEVMwareESXVirtualMachineGuestDiskAnyDiskUsageMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>23 June 2022 - KWJ - Disabling Monitor in general</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliasee454481ad97460788a88a5a4c568100OverrideForMonitorNiCEVMwareESXVirtualMachineLastSnapshotMonitorForContextNiCEVMwareESXVirtualMachine">
+          <Name>NotUsed</Name>
+          <Description>28 June 2022 - KWJ - Disable VMware snapshot due to backup strategy</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias5341249a6fca4a9fb8472e775488e3ecOverrideForMonitorNiCEVMwareESXHostIsMaintenanceModeMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>23 June 2022 - KWJ - Disabled alert per VMware Admin Chris Bates</Description>
+        </DisplayString>
+
+        <DisplayString ElementID="Aliasb825f301b7f741bc8672d53d6f859cb9OverrideForMonitorNiCEVMwareESXDatastoreUsedSpaceThresholdMonitorForContextNiCEVMwareESXDatastore">
+          <Name>NotUsed</Name>
+          <Description>23 June 2022 - KWJ - Tuning to Warning</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias54c0538cace347dda17c9b9edeec1ed4OverrideForMonitorNiCEVMwareESXPoolMemoryOverheadMBMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>22 June 2022 - KWJ - Changing Resource Pool Memory Overhead to Warning</Description>
+        </DisplayString>
+
+        <DisplayString ElementID="Override.Group.Enable.NiCE.VMware.ESX.VirtualMachineGuestDisk.AnyDiskUsage.Monitor">
+          <Name>NotUsed</Name>
+          <Description>Enabling NonWindows Group for alerts</Description>
+        </DisplayString>
+        <DisplayString ElementID="Override.Group.Enable.NiCE.VMware.ESX.Datastore.UsedSpace.ThresholdMonitor">
+          <Name>NotUsed</Name>
+          <Description>23 June 2022 - KWJ - Disabled per VMware SME/ESX engineering admin, Remedy INIC 3625711</Description>
+        </DisplayString>
+        <DisplayString ElementID="Override.Group.Enable.NiCE.VMware.ESX.VirtualMachine.ToolsNotRunning.Monitor">
+          <Name>NotUsed</Name>
+          <Description>28 June 2022 - KWJ - Disabling alerts per VMware SME</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias73649a88175148e3af8f8aa12145f0d8OverrideForMonitorNiCEVMwareESXVirtualMachineToolsNotRunningMonitorForContextUINameSpacece5df3a25df24a0ab874fefa053e3989Group">
+          <Name>NotUsed</Name>
+          <Description>28 June 2022 - KWJ - Disabling alerts per VMware SME</Description>
+        </DisplayString>
+
+        <DisplayString ElementID="Alias6d5fc659b7f34c38a011cca3376c30a3OverrideForMonitorNiCEVMwareESXPoolCPUUsagePercentMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>22 June 2022 - KWJ - MatchCount/Samples changed to 4 for hourly statistics</Description>
+        </DisplayString>
+		<DisplayString ElementID="Alias79cc9b07486045da8b6e002410dafb4bOverrideForMonitorNiCEVMwareESXPoolCPUUsagePercentMonitorForContextNiCEVMwareESXPool">
+          <Name>NotUsed</Name>
+          <Description>22 June 2022 - KWJ - Changing Warning level to 90% from 80</Description>
+        </DisplayString>
+        <DisplayString ElementID="Aliascb385ab593e1499390c23057e571236aOverrideForMonitorNiCEVMwareESXNetworkDVSwitchStatusConfigMonitorForContextNiCEVMwareESXNetworkDVSwitch">
+          <Name>NotUsed</Name>
+          <Description>23 June 2022 - KWJ - Updated alert per VMware Admin VMware SME</Description>
+        </DisplayString>
+
+        <DisplayString ElementID="Aliasc333324a06c246cab210daeb40c23147OverrideForMonitorNiCEVMwareESXHostIsDisconnectedMonitorForContextNiCEVMwareESXHost">
+          <Name>NotUsed</Name>
+          <Description>14 Dec 2021 - KWJ - Disabling per Virtualization team as license issue being addressed.</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias5e8561fc893a43cdb87cbcbfa7386987OverrideForMonitorNiCEVMwareESXDatastoreAccessibleStateMonitorForContextNiCEVMwareESXDatastore">
+          <Name>NotUsed</Name>
+          <Description>14 Dec 2021 - KWJ - Disabling for VMware license issue until 12 Jan per virtualization team.</Description>
+        </DisplayString>
+        <DisplayString ElementID="Alias6545e17bacf94be9bcec8b849a7a1e34OverrideForMonitorNiCEVMwareESXHostNetworkAdapterLinkPresentForContextNiCEVMwareESXHostNetworkAdapter">
+          <Name>NotUsed</Name>
+          <Description>15 Dec 2021 - KWJ - Disabling due to VMware licensing issues</Description>
+        </DisplayString>
+      </DisplayStrings>
+    </LanguagePack>
+  </LanguagePacks>
+</ManagementPack>
